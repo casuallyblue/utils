@@ -1,1 +1,1 @@
-# utils
+# cli utils library
