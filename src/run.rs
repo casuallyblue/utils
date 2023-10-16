@@ -139,7 +139,7 @@ pub fn run(cli: Cli) -> Result<()> {
 
                 repo.checkout_tree(&repo.find_object(target_commit.id(), None).unwrap(), None)
                     .unwrap();
-                repo.set_head("refs/heads/master").unwrap();
+                repo.set_head(target_commit.refname().unwrap()).unwrap();
             }
         },
     }
