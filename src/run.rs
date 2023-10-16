@@ -1,4 +1,5 @@
 use std::env::current_dir;
+use std::io::{stdout, Write};
 use std::path::Path;
 
 use git2::{Cred, FetchOptions, RemoteCallbacks, Repository, Signature};
@@ -95,6 +96,7 @@ pub fn run(cli: Cli) -> Result<()> {
                             progress.indexed_deltas(),
                             progress.total_deltas()
                         );
+                        stdout().flush().unwrap();
                     } else {
                         print!(
                             "Received {}/{} objects ({}) in {} bytes\r",
@@ -103,6 +105,7 @@ pub fn run(cli: Cli) -> Result<()> {
                             progress.indexed_objects(),
                             progress.received_bytes()
                         );
+                        stdout().flush().unwrap();
                     }
 
                     return true;
