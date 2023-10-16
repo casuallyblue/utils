@@ -1,9 +1,7 @@
 use std::env::current_dir;
-use std::os;
 use std::path::Path;
-use std::process::Command;
 
-use git2::{Repository, Signature};
+use git2::{Cred, FetchOptions, RemoteCallbacks, Repository, Signature};
 
 use crate::cli::repo::{RepoCommand, RepoType};
 use crate::cli::Cli;
@@ -15,11 +13,11 @@ pub fn run(cli: Cli) -> Result<()> {
             RepoCommand::Create { name, repo_type } => match repo_type {
                 Some(repo_type) => match repo_type {
                     RepoType::Git => {
-                        let repo = if let Some(name) = name {
-                            Repository::init(name)
+                        let repo = Repository::init(if let Some(name) = name {
+                            name
                         } else {
-                            Repository::init(".")
-                        };
+                            ".".into()
+                        });
 
                         match repo {
                             Ok(repo) => {
@@ -47,7 +45,7 @@ pub fn run(cli: Cli) -> Result<()> {
                         .add_path(&Path::new(&path))
                         .expect("could not add path to index");
 
-                    index.write();
+                    index.write().unwrap();
                 }
                 RepoType::Pijul => todo!(),
                 RepoType::Subversion => todo!(),
@@ -85,7 +83,48 @@ pub fn run(cli: Cli) -> Result<()> {
                 RepoType::Subversion => todo!(),
                 RepoType::Bazaar => todo!(),
             },
-            RepoCommand::Update => todo!(),
+            RepoCommand::Update => {
+                let repo = Repository::open(current_dir().expect("no cwd")).unwrap();
+
+                let mut options = FetchOptions::new();
+                let mut callbacks = RemoteCallbacks::new();
+                callbacks.transfer_progress(|progress| {
+                    if progress.received_objects() == progress.total_objects() {
+                        print!(
+                            "Resolving deltas {}/{}\r",
+                            progress.indexed_deltas(),
+                            progress.total_deltas()
+                        );
+                    } else {
+                        print!(
+                            "Received {}/{} objects ({}) in {} bytes\r",
+                            progress.received_objects(),
+                            progress.total_objects(),
+                            progress.indexed_objects(),
+                            progress.received_bytes()
+                        );
+                    }
+
+                    return true;
+                });
+
+                callbacks.credentials(|_url, username_from_url, _allowed_types| {
+                    Cred::ssh_key(
+                        username_from_url.unwrap_or("git"),
+                        None,
+                        Path::new("/Users/admin/.ssh/id_rsa"),
+                        None,
+                    )
+                });
+
+                options.remote_callbacks(callbacks);
+
+                let mut remote = repo.find_remote("origin").unwrap();
+
+                remote
+                    .fetch(&["master"], Some(&mut options), Some("fetch"))
+                    .unwrap();
+            }
         },
     }
     Ok(())
