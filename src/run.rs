@@ -5,8 +5,6 @@ use crate::cli::Cli;
 use crate::result::Result;
 
 pub fn run(cli: Cli) -> Result<()> {
-    println!("{cli:?}");
-
     match cli.subcommand {
         crate::cli::Command::Repo { command } => match command {
             RepoCommand::Create { name, repo_type } => match repo_type {
@@ -39,7 +37,19 @@ pub fn run(cli: Cli) -> Result<()> {
                 RepoType::Subversion => todo!(),
                 RepoType::Bazaar => todo!(),
             },
-            RepoCommand::Commit { message } => todo!(),
+            RepoCommand::Commit { message } => match detect_repo_type() {
+                RepoType::Git => {
+                    let mut git = Command::new("git");
+                    git.arg("commit");
+                    git.arg("-m");
+                    git.arg(message);
+
+                    git.output().expect("Failed to execute git");
+                }
+                RepoType::Pijul => todo!(),
+                RepoType::Subversion => todo!(),
+                RepoType::Bazaar => todo!(),
+            },
             RepoCommand::Update => todo!(),
         },
     }
