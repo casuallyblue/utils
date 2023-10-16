@@ -127,6 +127,19 @@ pub fn run(cli: Cli) -> Result<()> {
                 remote
                     .fetch(&["master"], Some(&mut options), Some("fetch"))
                     .unwrap();
+
+                let target_branch = repo
+                    .find_branch("master", git2::BranchType::Local)
+                    .unwrap()
+                    .get()
+                    .target()
+                    .unwrap();
+
+                let target_commit = repo.find_annotated_commit(target_branch).unwrap();
+
+                repo.checkout_tree(&repo.find_object(target_commit.id(), None).unwrap(), None)
+                    .unwrap();
+                repo.set_head("refs/heads/master").unwrap();
             }
         },
     }
