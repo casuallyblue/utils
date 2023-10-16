@@ -1,4 +1,9 @@
+use std::env::current_dir;
+use std::os;
+use std::path::Path;
 use std::process::Command;
+
+use git2::{Repository, Signature};
 
 use crate::cli::repo::{RepoCommand, RepoType};
 use crate::cli::Cli;
@@ -10,14 +15,18 @@ pub fn run(cli: Cli) -> Result<()> {
             RepoCommand::Create { name, repo_type } => match repo_type {
                 Some(repo_type) => match repo_type {
                     RepoType::Git => {
-                        let mut git = Command::new("git");
-                        git.arg("init");
+                        let repo = if let Some(name) = name {
+                            Repository::init(name)
+                        } else {
+                            Repository::init(".")
+                        };
 
-                        if let Some(name) = name {
-                            git.arg(name);
+                        match repo {
+                            Ok(repo) => {
+                                println!("Created git repository {:?}", repo.path());
+                            }
+                            Err(e) => return Err(Box::new(e)),
                         }
-
-                        git.output().expect("Failed to execute git");
                     }
                     RepoType::Pijul => todo!(),
                     RepoType::Subversion => todo!(),
@@ -27,11 +36,18 @@ pub fn run(cli: Cli) -> Result<()> {
             },
             RepoCommand::AddChange { path } => match detect_repo_type() {
                 RepoType::Git => {
-                    let mut git = Command::new("git");
-                    git.arg("add");
-                    git.arg(path);
+                    let repo = match Repository::open(current_dir().expect("No current directory"))
+                    {
+                        Ok(repo) => repo,
+                        Err(e) => return Err(Box::new(e)),
+                    };
 
-                    git.output().expect("Failed to execute git");
+                    let mut index = repo.index().expect("Could not get repository index");
+                    index
+                        .add_path(&Path::new(&path))
+                        .expect("could not add path to index");
+
+                    index.write();
                 }
                 RepoType::Pijul => todo!(),
                 RepoType::Subversion => todo!(),
@@ -39,12 +55,31 @@ pub fn run(cli: Cli) -> Result<()> {
             },
             RepoCommand::Commit { message } => match detect_repo_type() {
                 RepoType::Git => {
-                    let mut git = Command::new("git");
-                    git.arg("commit");
-                    git.arg("-m");
-                    git.arg(message);
+                    let repo = match Repository::open(current_dir().expect("No current directory"))
+                    {
+                        Ok(repo) => repo,
+                        Err(e) => return Err(Box::new(e)),
+                    };
 
-                    git.output().expect("Failed to execute git");
+                    let tree_oid = repo.index().unwrap().write_tree().unwrap();
+
+                    let sig =
+                        Signature::now("casually-blue", "darkforestsilence@gmail.com").unwrap();
+
+                    let parent_ref = repo.find_reference("HEAD").unwrap();
+                    let parent = repo
+                        .find_commit(parent_ref.resolve().unwrap().target().unwrap())
+                        .unwrap();
+
+                    repo.commit(
+                        Some("HEAD"),
+                        &sig,
+                        &sig,
+                        message.as_str(),
+                        &repo.find_tree(tree_oid).unwrap(),
+                        &[&parent],
+                    )
+                    .unwrap();
                 }
                 RepoType::Pijul => todo!(),
                 RepoType::Subversion => todo!(),
