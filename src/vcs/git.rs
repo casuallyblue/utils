@@ -4,7 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use git2::{build::CheckoutBuilder, Cred, FetchOptions, RemoteCallbacks, Repository, Signature};
+use git2::{
+    build::CheckoutBuilder, Branch, Branches, Cred, FetchOptions, MergeOptions, RemoteCallbacks,
+    Repository, Signature,
+};
 
 use crate::run::{Repo, RepoActions};
 
@@ -78,11 +81,12 @@ impl<T: Repo> RepoActions for T {
             .unwrap();
         let annotated = repo.reference_to_annotated_commit(&ref_anotated).unwrap();
 
-        let (analysis, _preference) = repo.merge_analysis(&[&annotated]).unwrap();
+        let (analysis, preference) = repo.merge_analysis(&[&annotated]).unwrap();
+
+        let head_ref = repo.find_reference("HEAD").unwrap();
 
         if analysis.is_fast_forward() {
             let target_oid = annotated.id();
-            let head_ref = repo.find_reference("HEAD").unwrap();
             let symbolic_head_ref = head_ref.symbolic_target().unwrap();
 
             let _target_ref = repo
@@ -95,6 +99,47 @@ impl<T: Repo> RepoActions for T {
 
             repo.checkout_tree(&target, Some(CheckoutBuilder::new().force()))
                 .unwrap();
+        } else if analysis.is_normal() {
+            if preference.is_fastforward_only() {
+                panic!("Fast Forward wanted, but a merge is necessary");
+            }
+
+            repo.merge(
+                &[&annotated],
+                Some(MergeOptions::new().diff3_style(true)),
+                Some(CheckoutBuilder::new().allow_conflicts(true).force()),
+            )
+            .unwrap();
+
+            if !repo.index().unwrap().has_conflicts() {
+                // Create the merge commit
+                let merge_commit = repo
+                    .resolve_reference_from_short_name("origin/master")
+                    .unwrap();
+                let sig = Signature::now("casually-blue", "darkforestsilence@gmail.com").unwrap();
+
+                let target = Branch::wrap(merge_commit);
+                let target = target.name().unwrap().unwrap();
+
+                let parent1 = head_ref.peel_to_commit().unwrap();
+                let parent2 = repo.find_commit(annotated.id()).unwrap();
+
+                let tree_oid = repo.index().unwrap().write_tree().unwrap();
+                let tree = repo.find_tree(tree_oid).unwrap();
+
+                let _commit = repo
+                    .commit(
+                        head_ref.name(),
+                        &sig,
+                        &sig,
+                        format!("Merge commit {}", target).as_str(),
+                        &tree,
+                        &[&parent1, &parent2],
+                    )
+                    .unwrap();
+
+                repo.cleanup_state().unwrap();
+            }
         }
     }
 
