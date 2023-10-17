@@ -60,10 +60,12 @@ impl<T: Repo> RepoActions for T {
         });
 
         callbacks.credentials(|_url, username_from_url, _allowed_types| {
+            let home = home::home_dir().expect("Could not find home");
+            let ssh_path = home.join(".ssh/id_rsa");
             Cred::ssh_key(
                 username_from_url.unwrap_or("git"),
                 None,
-                Path::new("/home/sierra/.ssh/id_rsa"),
+                ssh_path.as_path(),
                 None,
             )
         });
@@ -180,10 +182,12 @@ impl<T: Repo> RepoActions for T {
 
         let mut callbacks = RemoteCallbacks::new();
         callbacks.credentials(|_url, username_from_url, _allowed_types| {
+            let home = home::home_dir().expect("Could not find home");
+            let ssh_path = home.join(".ssh/id_rsa");
             Cred::ssh_key(
                 username_from_url.unwrap_or("git"),
                 None,
-                Path::new("/home/sierra/.ssh/id_rsa"),
+                ssh_path.as_path(),
                 None,
             )
         });
