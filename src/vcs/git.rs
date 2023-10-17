@@ -178,7 +178,20 @@ impl<T: Repo> RepoActions for T {
         let repo = Repository::open(current_dir()?)?;
         let mut remote = repo.find_remote(remote.as_str())?;
 
-        remote.push(&["refs/heads/master"], Some(&mut PushOptions::new()))?;
+        let mut callbacks = RemoteCallbacks::new();
+        callbacks.credentials(|_url, username_from_url, _allowed_types| {
+            Cred::ssh_key(
+                username_from_url.unwrap_or("git"),
+                None,
+                Path::new("/home/sierra/.ssh/id_rsa"),
+                None,
+            )
+        });
+
+        remote.push(
+            &["refs/heads/master"],
+            Some(&mut PushOptions::new().remote_callbacks(callbacks)),
+        )?;
 
         Ok(())
     }
