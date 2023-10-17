@@ -33,16 +33,16 @@ impl Execute for RepoCommand {
             RepoCommand::Create { path, repo_type } => {
                 match repo_type.clone().unwrap_or(RepoType::Git) {
                     RepoType::Git => {
-                        GitRepo { path: path.clone() }.create();
+                        GitRepo { path: path.clone() }.create()?;
                     }
                     RepoType::Pijul => todo!(),
                     RepoType::Subversion => todo!(),
                     RepoType::Bazaar => todo!(),
                 }
             }
-            RepoCommand::AddChange { path } => guess_repo_type()?.add_change(path.clone()),
-            RepoCommand::Commit { message } => guess_repo_type()?.commit(message.clone()),
-            RepoCommand::Update => guess_repo_type()?.update(),
+            RepoCommand::AddChange { path } => guess_repo_type()?.add_change(path.clone())?,
+            RepoCommand::Commit { message } => guess_repo_type()?.commit(message.clone())?,
+            RepoCommand::Update => guess_repo_type()?.update()?,
         }
 
         Ok(())

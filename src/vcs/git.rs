@@ -5,9 +5,11 @@ use std::{
 };
 
 use git2::{
-    build::CheckoutBuilder, Branch, Branches, Cred, FetchOptions, MergeOptions, RemoteCallbacks,
-    Repository, Signature,
+    build::CheckoutBuilder, Branch, Cred, FetchOptions, MergeOptions, RemoteCallbacks, Repository,
+    Signature,
 };
+
+use crate::result::Result;
 
 use crate::run::{Repo, RepoActions};
 
@@ -22,18 +24,16 @@ impl Repo for GitRepo {
 }
 
 impl<T: Repo> RepoActions for T {
-    fn create(&mut self) {
-        let repo = Repository::init(self.path());
-        match repo {
-            Ok(repo) => {
-                println!("Created git repository {:?}", repo.path());
-            }
-            Err(e) => panic!("Error {:?}", e),
-        }
+    fn create(&mut self) -> Result<()> {
+        let repo = Repository::init(self.path())?;
+
+        println!("Created git repository {:?}", repo.path());
+
+        Ok(())
     }
 
-    fn update(&mut self) {
-        let repo = Repository::open(current_dir().expect("no cwd")).unwrap();
+    fn update(&mut self) -> Result<()> {
+        let repo = Repository::open(current_dir()?)?;
 
         let mut options = FetchOptions::new();
         let mut callbacks = RemoteCallbacks::new();
@@ -53,10 +53,10 @@ impl<T: Repo> RepoActions for T {
                     progress.indexed_objects(),
                     progress.received_bytes()
                 );
-                stdout().flush().unwrap();
+                stdout().flush().expect("Failed to flush stdout");
             }
 
-            return true;
+            true
         });
 
         callbacks.credentials(|_url, username_from_url, _allowed_types| {
@@ -70,35 +70,27 @@ impl<T: Repo> RepoActions for T {
 
         options.remote_callbacks(callbacks);
 
-        let mut remote = repo.find_remote("origin").unwrap();
+        let mut remote = repo.find_remote("origin")?;
 
-        remote
-            .fetch(&["master"], Some(&mut options), Some("fetch"))
-            .unwrap();
+        remote.fetch(&["master"], Some(&mut options), Some("fetch"))?;
 
-        let ref_anotated = repo
-            .resolve_reference_from_short_name("origin/master")
-            .unwrap();
-        let annotated = repo.reference_to_annotated_commit(&ref_anotated).unwrap();
+        let ref_anotated = repo.resolve_reference_from_short_name("origin/master")?;
+        let annotated = repo.reference_to_annotated_commit(&ref_anotated)?;
 
-        let (analysis, preference) = repo.merge_analysis(&[&annotated]).unwrap();
+        let (analysis, preference) = repo.merge_analysis(&[&annotated])?;
 
-        let head_ref = repo.find_reference("HEAD").unwrap();
+        let head_ref = repo.find_reference("HEAD")?;
 
         if analysis.is_fast_forward() {
             let target_oid = annotated.id();
-            let symbolic_head_ref = head_ref.symbolic_target().unwrap();
+            let symbolic_head_ref = head_ref.symbolic_target().expect("symbolic reference");
 
-            let _target_ref = repo
-                .reference(symbolic_head_ref, target_oid, true, "Fast Forward")
-                .unwrap();
+            let _target_ref =
+                repo.reference(symbolic_head_ref, target_oid, true, "Fast Forward")?;
 
-            let target = repo
-                .find_object(target_oid, Some(git2::ObjectType::Commit))
-                .unwrap();
+            let target = repo.find_object(target_oid, Some(git2::ObjectType::Commit))?;
 
-            repo.checkout_tree(&target, Some(CheckoutBuilder::new().force()))
-                .unwrap();
+            repo.checkout_tree(&target, Some(CheckoutBuilder::new().force()))?;
         } else if analysis.is_normal() {
             if preference.is_fastforward_only() {
                 panic!("Fast Forward wanted, but a merge is necessary");
@@ -108,78 +100,81 @@ impl<T: Repo> RepoActions for T {
                 &[&annotated],
                 Some(MergeOptions::new().diff3_style(true)),
                 Some(CheckoutBuilder::new().allow_conflicts(true).force()),
-            )
-            .unwrap();
+            )?;
 
-            if !repo.index().unwrap().has_conflicts() {
+            if !repo.index()?.has_conflicts() {
                 // Create the merge commit
-                let merge_commit = repo
-                    .resolve_reference_from_short_name("origin/master")
-                    .unwrap();
-                let sig = Signature::now("casually-blue", "darkforestsilence@gmail.com").unwrap();
+                let merge_commit = repo.resolve_reference_from_short_name("origin/master")?;
+                let sig = Signature::now("casually-blue", "darkforestsilence@gmail.com")?;
 
                 let target = Branch::wrap(merge_commit);
-                let target = target.name().unwrap().unwrap();
+                let target = target
+                    .name()?
+                    .expect("Cannot merge to unnamed branch currently");
 
-                let parent1 = head_ref.peel_to_commit().unwrap();
-                let parent2 = repo.find_commit(annotated.id()).unwrap();
+                let parent1 = head_ref.peel_to_commit()?;
+                let parent2 = repo.find_commit(annotated.id())?;
 
-                let tree_oid = repo.index().unwrap().write_tree().unwrap();
-                let tree = repo.find_tree(tree_oid).unwrap();
+                let tree_oid = repo.index().unwrap().write_tree()?;
+                let tree = repo.find_tree(tree_oid)?;
 
-                let _commit = repo
-                    .commit(
-                        head_ref.name(),
-                        &sig,
-                        &sig,
-                        format!("Merge commit {}", target).as_str(),
-                        &tree,
-                        &[&parent1, &parent2],
-                    )
-                    .unwrap();
+                let _commit = repo.commit(
+                    head_ref.name(),
+                    &sig,
+                    &sig,
+                    format!("Merge commit {}", target).as_str(),
+                    &tree,
+                    &[&parent1, &parent2],
+                )?;
 
-                repo.cleanup_state().unwrap();
+                repo.cleanup_state()?;
             }
         }
+
+        Ok(())
     }
 
-    fn add_change(&mut self, path: String) {
+    fn add_change(&mut self, path: String) -> Result<()> {
         let repo = match Repository::open(self.path()) {
             Ok(repo) => repo,
             Err(e) => panic!("Error: {:?}", e),
         };
 
-        let mut index = repo.index().expect("Could not get repository index");
-        index
-            .add_path(&Path::new(&path))
-            .expect("could not add path to index");
+        let mut index = repo.index()?;
+        index.add_path(Path::new(&path))?;
 
-        index.write().unwrap();
+        index.write()?;
+
+        Ok(())
     }
 
-    fn commit(&mut self, message: String) {
-        let repo = match Repository::open(current_dir().expect("No current directory")) {
+    fn commit(&mut self, message: String) -> Result<()> {
+        let repo = match Repository::open(current_dir()?) {
             Ok(repo) => repo,
             Err(e) => panic!("Error: {:?}", e),
         };
 
-        let tree_oid = repo.index().unwrap().write_tree().unwrap();
+        let tree_oid = repo.index()?.write_tree()?;
 
-        let sig = Signature::now("casually-blue", "darkforestsilence@gmail.com").unwrap();
+        let sig = Signature::now("casually-blue", "darkforestsilence@gmail.com")?;
 
-        let parent_ref = repo.find_reference("HEAD").unwrap();
-        let parent = repo
-            .find_commit(parent_ref.resolve().unwrap().target().unwrap())
-            .unwrap();
+        let parent_ref = repo.find_reference("HEAD")?;
+        let parent = repo.find_commit(
+            parent_ref
+                .resolve()?
+                .target()
+                .expect("Found a symbolic reference where a normal reference was needed"),
+        )?;
 
         repo.commit(
             Some("HEAD"),
             &sig,
             &sig,
             message.as_str(),
-            &repo.find_tree(tree_oid).unwrap(),
+            &repo.find_tree(tree_oid)?,
             &[&parent],
-        )
-        .unwrap();
+        )?;
+
+        Ok(())
     }
 }

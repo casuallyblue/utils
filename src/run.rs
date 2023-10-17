@@ -4,10 +4,10 @@ use crate::cli::{Cli, Execute};
 use crate::result::Result;
 
 pub trait RepoActions {
-    fn create(&mut self);
-    fn update(&mut self);
-    fn add_change(&mut self, path: String);
-    fn commit(&mut self, message: String);
+    fn create(&mut self) -> Result<()>;
+    fn update(&mut self) -> Result<()>;
+    fn add_change(&mut self, path: String) -> Result<()>;
+    fn commit(&mut self, message: String) -> Result<()>;
 }
 
 pub trait Repo {
