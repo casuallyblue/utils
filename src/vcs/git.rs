@@ -95,8 +95,7 @@ impl<T: Repo> RepoActions for T {
                 .find_object(target_oid, Some(git2::ObjectType::Commit))
                 .unwrap();
 
-            repo.checkout_tree(&target, Some(CheckoutBuilder::new().safe()))
-                .unwrap();
+            repo.checkout_tree(&target, None).unwrap();
         }
     }
 
