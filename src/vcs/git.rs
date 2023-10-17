@@ -37,6 +37,7 @@ impl<T: Repo> RepoActions for T {
 
         let mut options = FetchOptions::new();
         let mut callbacks = RemoteCallbacks::new();
+
         callbacks.transfer_progress(|progress| {
             if progress.received_objects() == progress.total_objects() {
                 print!(
@@ -74,53 +75,72 @@ impl<T: Repo> RepoActions for T {
 
         let mut remote = repo.find_remote("origin")?;
 
+        // fetch changes on the master branch
+        // but don't do anything with them yet
         remote.fetch(&["master"], Some(&mut options), Some("fetch"))?;
 
+        // Get the head of the origin branch that is being updated
         let ref_anotated = repo.resolve_reference_from_short_name("origin/master")?;
+        // Annotate the commit so we can reference it later
         let annotated = repo.reference_to_annotated_commit(&ref_anotated)?;
 
+        // Check if we need a full merge or if we can just fast forward the branch
         let (analysis, preference) = repo.merge_analysis(&[&annotated])?;
 
         let head_ref = repo.find_reference("HEAD")?;
 
         if analysis.is_fast_forward() {
+            // get the actual id for the new head
             let target_oid = annotated.id();
+
+            // Find the head pointer reference
             let symbolic_head_ref = head_ref.symbolic_target().expect("symbolic reference");
 
-            let _target_ref =
-                repo.reference(symbolic_head_ref, target_oid, true, "Fast Forward")?;
+            // Force write the new head reference into the HEAD reference
+            repo.reference(symbolic_head_ref, target_oid, true, "Fast Forward")?;
 
+            // Find the new head commit
             let target = repo.find_object(target_oid, Some(git2::ObjectType::Commit))?;
 
+            // Checkout the updated head and force changes to be updated in existing files
             repo.checkout_tree(&target, Some(CheckoutBuilder::new().force()))?;
         } else if analysis.is_normal() {
             if preference.is_fastforward_only() {
                 panic!("Fast Forward wanted, but a merge is necessary");
             }
 
+            // Attempt a merge
             repo.merge(
                 &[&annotated],
                 Some(MergeOptions::new().diff3_style(true)),
                 Some(CheckoutBuilder::new().allow_conflicts(true).force()),
             )?;
 
+            // If we don't have any conflicts we can proceed
             if !repo.index()?.has_conflicts() {
-                // Create the merge commit
+                // Find the remote branch's head
                 let merge_commit = repo.resolve_reference_from_short_name("origin/master")?;
-                let sig = Signature::now("casually-blue", "darkforestsilence@gmail.com")?;
 
+                // Find the name for the remote tracking branch so we can log it
                 let target = Branch::wrap(merge_commit);
                 let target = target
                     .name()?
                     .expect("Cannot merge to unnamed branch currently");
 
+                // Get the local head commit
                 let parent1 = head_ref.peel_to_commit()?;
+
+                // Get the remote branch's head commit
                 let parent2 = repo.find_commit(annotated.id())?;
 
+                // Update the repository tree with the new content
                 let tree_oid = repo.index().unwrap().write_tree()?;
                 let tree = repo.find_tree(tree_oid)?;
 
-                let _commit = repo.commit(
+                let sig = Signature::now("casually-blue", "darkforestsilence@gmail.com")?;
+
+                // Apply the merge with a new commit
+                repo.commit(
                     head_ref.name(),
                     &sig,
                     &sig,
@@ -129,6 +149,7 @@ impl<T: Repo> RepoActions for T {
                     &[&parent1, &parent2],
                 )?;
 
+                // Clean the state so git knows the merge is finished
                 repo.cleanup_state()?;
             }
         }
@@ -137,14 +158,14 @@ impl<T: Repo> RepoActions for T {
     }
 
     fn add_change(&mut self, path: String) -> Result<()> {
-        let repo = match Repository::open(self.path()) {
-            Ok(repo) => repo,
-            Err(e) => panic!("Error: {:?}", e),
-        };
+        let repo = Repository::open(self.path())?;
 
+        // Get the index for the currently checked
+        // out branch and insert the file into it
         let mut index = repo.index()?;
         index.add_path(Path::new(&path))?;
 
+        // Write the index back out to the filesystem
         index.write()?;
 
         Ok(())
@@ -152,10 +173,13 @@ impl<T: Repo> RepoActions for T {
 
     fn commit(&mut self, message: String) -> Result<()> {
         let repo = Repository::open(current_dir()?)?;
+
+        // Get a reference to the current tree
         let tree_oid = repo.index()?.write_tree()?;
 
         let sig = Signature::now("casually-blue", "darkforestsilence@gmail.com")?;
 
+        // Find the head pointer and resolve it to an acutal commit
         let parent_ref = repo.find_reference("HEAD")?;
         let parent = repo.find_commit(
             parent_ref
@@ -164,6 +188,8 @@ impl<T: Repo> RepoActions for T {
                 .expect("Found a symbolic reference where a normal reference was needed"),
         )?;
 
+        // Create a new commit with the current head as a parent
+        // and set it as the new head
         repo.commit(
             Some("HEAD"),
             &sig,
@@ -192,6 +218,7 @@ impl<T: Repo> RepoActions for T {
             )
         });
 
+        // Push the master branch
         remote.push(
             &["refs/heads/master"],
             Some(&mut PushOptions::new().remote_callbacks(callbacks)),
