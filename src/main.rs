@@ -1,6 +1,7 @@
 mod cli;
 mod result;
 mod run;
+mod vcs;
 
 use result::Result;
 
