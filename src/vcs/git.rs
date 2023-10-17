@@ -84,11 +84,11 @@ impl<T: Repo> RepoActions for T {
 
         if analysis.is_fast_forward() {
             let target_oid = annotated.id();
-            let head_ref = repo.find_reference("refs/heads/master").unwrap();
+            let head_ref = repo.find_reference("HEAD").unwrap();
             let symbolic_head_ref = head_ref.symbolic_target().unwrap();
 
             let target_ref = repo
-                .reference(symbolic_head_ref, target_oid, false, "Fast Forward")
+                .reference(symbolic_head_ref, target_oid, true, "Fast Forward")
                 .unwrap();
 
             let target = repo
