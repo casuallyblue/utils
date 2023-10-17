@@ -11,7 +11,7 @@ use git2::{
 
 use crate::result::Result;
 
-use crate::run::{Repo, RepoActions};
+use super::{Repo, RepoActions};
 
 pub struct GitRepo {
     pub(crate) path: PathBuf,

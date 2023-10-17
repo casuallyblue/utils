@@ -2,10 +2,7 @@ use std::{env::current_dir, error::Error, ffi::OsStr, path::PathBuf, str::FromSt
 
 use clap::Subcommand;
 
-use crate::{
-    run::{Repo, RepoActions},
-    vcs::git::GitRepo,
-};
+use crate::vcs::{git::GitRepo, Repo, RepoActions};
 
 use super::Execute;
 
