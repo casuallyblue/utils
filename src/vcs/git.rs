@@ -4,7 +4,9 @@ use std::{
     path::Path,
 };
 
-use git2::{Cred, FetchOptions, RemoteCallbacks, Repository, Signature};
+use git2::{
+    build::CheckoutBuilder, Cred, FetchOptions, Reference, RemoteCallbacks, Repository, Signature,
+};
 
 use crate::run::{Repo, RepoActions};
 
@@ -60,7 +62,7 @@ impl<T: Repo> RepoActions for T {
             Cred::ssh_key(
                 username_from_url.unwrap_or("git"),
                 None,
-                Path::new("/Users/admin/.ssh/id_rsa"),
+                Path::new("/home/sierra/.ssh/id_rsa"),
                 None,
             )
         });
@@ -73,19 +75,29 @@ impl<T: Repo> RepoActions for T {
             .fetch(&["master"], Some(&mut options), Some("fetch"))
             .unwrap();
 
-        let target_branch = repo
-            .find_branch("master", git2::BranchType::Local)
-            .unwrap()
-            .get()
-            .target()
+        let ref_anotated = repo
+            .resolve_reference_from_short_name("origin/master")
             .unwrap();
+        let annotated = repo.reference_to_annotated_commit(&ref_anotated).unwrap();
 
-        let target_commit = repo.find_annotated_commit(target_branch).unwrap();
+        let (analysis, preference) = repo.merge_analysis(&[&annotated]).unwrap();
 
-        repo.checkout_tree(&repo.find_object(target_commit.id(), None).unwrap(), None)
-            .unwrap();
+        if analysis.is_fast_forward() {
+            let target_oid = annotated.id();
+            let head_ref = repo.find_reference("refs/heads/master").unwrap();
+            let symbolic_head_ref = head_ref.symbolic_target().unwrap();
 
-        repo.set_head_bytes(target_commit.refname_bytes()).unwrap();
+            let target_ref = repo
+                .reference(symbolic_head_ref, target_oid, false, "Fast Forward")
+                .unwrap();
+
+            let target = repo
+                .find_object(target_oid, Some(git2::ObjectType::Commit))
+                .unwrap();
+
+            repo.checkout_tree(&target, Some(CheckoutBuilder::new().safe()))
+                .unwrap();
+        }
     }
 
     fn add_change(&mut self, path: String) {
