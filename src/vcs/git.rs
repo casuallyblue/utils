@@ -5,8 +5,8 @@ use std::{
 };
 
 use git2::{
-    build::CheckoutBuilder, Branch, Cred, FetchOptions, MergeOptions, RemoteCallbacks, Repository,
-    Signature,
+    build::CheckoutBuilder, Branch, Cred, FetchOptions, MergeOptions, PushOptions, RemoteCallbacks,
+    Repository, Signature,
 };
 
 use crate::result::Result;
@@ -149,11 +149,7 @@ impl<T: Repo> RepoActions for T {
     }
 
     fn commit(&mut self, message: String) -> Result<()> {
-        let repo = match Repository::open(current_dir()?) {
-            Ok(repo) => repo,
-            Err(e) => panic!("Error: {:?}", e),
-        };
-
+        let repo = Repository::open(current_dir()?)?;
         let tree_oid = repo.index()?.write_tree()?;
 
         let sig = Signature::now("casually-blue", "darkforestsilence@gmail.com")?;
@@ -174,6 +170,15 @@ impl<T: Repo> RepoActions for T {
             &repo.find_tree(tree_oid)?,
             &[&parent],
         )?;
+
+        Ok(())
+    }
+
+    fn push(&mut self, remote: String) -> Result<()> {
+        let repo = Repository::open(current_dir()?)?;
+        let mut remote = repo.find_remote(remote.as_str())?;
+
+        remote.push(&["refs/heads/master"], Some(&mut PushOptions::new()))?;
 
         Ok(())
     }

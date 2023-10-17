@@ -25,6 +25,10 @@ pub enum RepoCommand {
         message: String,
     },
     Update,
+    Push {
+        #[arg(default_value = "origin")]
+        remote: String,
+    },
 }
 
 impl Execute for RepoCommand {
@@ -43,6 +47,7 @@ impl Execute for RepoCommand {
             RepoCommand::AddChange { path } => guess_repo_type()?.add_change(path.clone())?,
             RepoCommand::Commit { message } => guess_repo_type()?.commit(message.clone())?,
             RepoCommand::Update => guess_repo_type()?.update()?,
+            RepoCommand::Push { remote } => guess_repo_type()?.push(remote.clone())?,
         }
 
         Ok(())

@@ -8,6 +8,7 @@ pub trait RepoActions {
     fn update(&mut self) -> Result<()>;
     fn add_change(&mut self, path: String) -> Result<()>;
     fn commit(&mut self, message: String) -> Result<()>;
+    fn push(&mut self, remote: String) -> Result<()>;
 }
 
 pub trait Repo {
