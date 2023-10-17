@@ -1,21 +1,19 @@
 use std::{
     env::current_dir,
     io::{stdout, Write},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
-use git2::{
-    build::CheckoutBuilder, Cred, FetchOptions, Reference, RemoteCallbacks, Repository, Signature,
-};
+use git2::{build::CheckoutBuilder, Cred, FetchOptions, RemoteCallbacks, Repository, Signature};
 
 use crate::run::{Repo, RepoActions};
 
 pub struct GitRepo {
-    pub(crate) path: String,
+    pub(crate) path: PathBuf,
 }
 
 impl Repo for GitRepo {
-    fn path(&mut self) -> String {
+    fn path(&mut self) -> PathBuf {
         self.path.clone()
     }
 }
@@ -80,14 +78,14 @@ impl<T: Repo> RepoActions for T {
             .unwrap();
         let annotated = repo.reference_to_annotated_commit(&ref_anotated).unwrap();
 
-        let (analysis, preference) = repo.merge_analysis(&[&annotated]).unwrap();
+        let (analysis, _preference) = repo.merge_analysis(&[&annotated]).unwrap();
 
         if analysis.is_fast_forward() {
             let target_oid = annotated.id();
             let head_ref = repo.find_reference("HEAD").unwrap();
             let symbolic_head_ref = head_ref.symbolic_target().unwrap();
 
-            let target_ref = repo
+            let _target_ref = repo
                 .reference(symbolic_head_ref, target_oid, true, "Fast Forward")
                 .unwrap();
 

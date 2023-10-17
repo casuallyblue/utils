@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use clap::{Parser, Subcommand};
 
 use self::repo::RepoCommand;
@@ -16,4 +18,8 @@ pub enum Command {
         #[command(subcommand)]
         command: RepoCommand,
     },
+}
+
+pub trait Execute {
+    fn execute(&mut self) -> Result<(), Box<dyn Error>>;
 }

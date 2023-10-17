@@ -1,11 +1,19 @@
-use std::{ffi::OsStr, str::FromStr};
+use std::{env::current_dir, error::Error, ffi::OsStr, path::PathBuf, str::FromStr};
 
 use clap::Subcommand;
+
+use crate::{
+    run::{Repo, RepoActions},
+    vcs::git::GitRepo,
+};
+
+use super::Execute;
 
 #[derive(Subcommand, Clone, Debug)]
 pub enum RepoCommand {
     Create {
-        name: Option<String>,
+        #[arg(default_value = ".")]
+        path: PathBuf,
 
         #[arg(long, default_value = "git")]
         repo_type: Option<RepoType>,
@@ -17,6 +25,43 @@ pub enum RepoCommand {
         message: String,
     },
     Update,
+}
+
+impl Execute for RepoCommand {
+    fn execute(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        match self {
+            RepoCommand::Create { path, repo_type } => {
+                match repo_type.clone().unwrap_or(RepoType::Git) {
+                    RepoType::Git => {
+                        GitRepo { path: path.clone() }.create();
+                    }
+                    RepoType::Pijul => todo!(),
+                    RepoType::Subversion => todo!(),
+                    RepoType::Bazaar => todo!(),
+                }
+            }
+            RepoCommand::AddChange { path } => guess_repo_type()?.add_change(path.clone()),
+            RepoCommand::Commit { message } => guess_repo_type()?.commit(message.clone()),
+            RepoCommand::Update => guess_repo_type()?.update(),
+        }
+
+        Ok(())
+    }
+}
+
+pub fn guess_repo_type() -> Result<impl RepoActions + Repo, Box<dyn Error>> {
+    let path = current_dir()?;
+    let path = path.as_path();
+
+    let git_path = path.join(".git");
+
+    if git_path.exists() {
+        return Ok(GitRepo {
+            path: PathBuf::from(path),
+        });
+    }
+
+    Err("Could not find any existing repository in the current directory".into())
 }
 
 #[derive(Clone, Debug)]
