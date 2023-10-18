@@ -15,11 +15,14 @@ pub fn clap_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let name = f.sig.ident.clone();
 
     let ty = match item_type {
-        syn::FnArg::Receiver(_) => panic!("Expected a type"),
-
-        syn::FnArg::Typed(syn::PatType { ty, .. }) => match *ty.clone() {
+        syn::FnArg::Receiver(recv) => match *recv.ty.clone() {
             syn::Type::Path(ty) => ty.path.clone(),
-            _ => panic!("Unexpected type here"),
+            _ => panic!("unexpected type"),
+        },
+
+        syn::FnArg::Typed(typed) => match *typed.ty.clone() {
+            syn::Type::Path(ty) => ty.path.clone(),
+            _ => panic!("Unexpected type"),
         },
     };
 
