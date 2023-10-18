@@ -12,12 +12,26 @@ pub struct Cli {
     pub subcommand: Command,
 }
 
+impl Execute for Cli {
+    fn execute(&mut self) -> Result<(), Box<dyn Error>> {
+        self.subcommand.execute()
+    }
+}
+
 #[derive(Subcommand, Debug)]
 pub enum Command {
     Repo {
         #[command(subcommand)]
         command: RepoCommand,
     },
+}
+
+impl Execute for Command {
+    fn execute(&mut self) -> Result<(), Box<dyn Error>> {
+        match self {
+            Command::Repo { command } => command.execute(),
+        }
+    }
 }
 
 pub trait Execute {
