@@ -33,7 +33,7 @@ impl<T: Repo> RepoActions for T {
     }
 
     fn update(&mut self) -> Result<()> {
-        let repo = Repository::open(current_dir()?)?;
+        let repo = Repository::open(self.path())?;
 
         let mut options = FetchOptions::new();
         let mut callbacks = RemoteCallbacks::new();
