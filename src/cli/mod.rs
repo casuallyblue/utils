@@ -22,13 +22,16 @@ impl Execute for Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    /// Manipulate a VCS repository
     Repo {
         #[command(subcommand)]
         command: RepoCommand,
     },
-    GenerateCompletions {
-        shell: Shell,
-    },
+
+    /// Generate CLI argument completions
+    GenerateCompletions { shell: Shell },
+
+    /// Install tools
     Setup {
         #[command(subcommand)]
         command: SetupCommand,
