@@ -3,9 +3,10 @@ use std::{error::Error, io::stdout};
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 
-use self::repo::RepoCommand;
+use self::{repo::RepoCommand, setup::SetupCommand};
 
 pub mod repo;
+pub mod setup;
 
 #[derive(Parser, Debug)]
 pub struct Cli {
@@ -28,6 +29,10 @@ pub enum Command {
     GenerateCompletions {
         shell: Shell,
     },
+    Setup {
+        #[command(subcommand)]
+        command: SetupCommand,
+    },
 }
 
 impl Execute for Command {
@@ -43,6 +48,7 @@ impl Execute for Command {
                 );
                 Ok(())
             }
+            Command::Setup { command } => command.execute(),
         }
     }
 }

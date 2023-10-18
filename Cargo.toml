@@ -17,3 +17,4 @@ git2 = { version = "0.18.1", features = [
   "vendored-openssl",
 ] }
 home = "0.5.5"
+reqwest = { version = "0.11.22", features = ["blocking"] }

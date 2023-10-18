@@ -28,14 +28,21 @@ pub fn clap_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
         pub fn main() {
             use clap::Parser;
+            use std::io::Write;
             let args = match #ty::try_parse() {
                 Ok(args) => args,
-                Err(e) => panic!("{e}"),
+                Err(e) => {
+                    writeln!(&mut std::io::stderr(), "{e}").expect("Could not write to stderr!");
+                    std::process::exit(-1);
+                },
             };
 
             match #name(args) {
                 Ok(()) => {},
-                Err(e) => panic!("{e}"),
+                Err(e) => {
+                    writeln!(&mut std::io::stderr(), "{e}").expect("Could not write to stderr!");
+                    std::process::exit(-1);
+                },
             }
         }
     }

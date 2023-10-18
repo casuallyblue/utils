@@ -1,7 +1,7 @@
 use std::{
     env::current_dir,
     io::{stdout, Write},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
 use git2::{
