@@ -163,7 +163,7 @@ impl<T: Repo> RepoActions for T {
         // Get the index for the currently checked
         // out branch and insert the file into it
         let mut index = repo.index()?;
-        index.add_path(path.as_path())?;
+        index.add_path(path.canonicalize()?.strip_prefix(self.path())?)?;
 
         // Write the index back out to the filesystem
         index.write()?;

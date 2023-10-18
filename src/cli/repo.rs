@@ -53,17 +53,21 @@ impl Execute for RepoCommand {
 
 pub fn guess_repo_type() -> Result<impl RepoActions + Repo, Box<dyn Error>> {
     let path = current_dir()?;
-    let path = path.as_path();
+    let mut path = Some(path.as_path());
 
-    let git_path = path.join(".git");
+    while let Some(repopath) = path {
+        let git_path = repopath.join(".git");
 
-    if git_path.exists() {
-        return Ok(GitRepo {
-            path: PathBuf::from(path),
-        });
+        if git_path.exists() {
+            return Ok(GitRepo {
+                path: PathBuf::from(repopath),
+            });
+        }
+
+        path = repopath.parent();
     }
 
-    Err("Could not find any existing repository in the current directory".into())
+    Err("Could not find any existing repository in the current directory or its parents".into())
 }
 
 #[derive(Clone, Debug)]
