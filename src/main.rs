@@ -1,29 +1,13 @@
 mod cli;
 mod result;
-mod run;
 mod vcs;
 
+use clap_main::clap_main;
 use result::Result;
 
-use std::process::exit;
+use cli::{Cli, Execute};
 
-use clap::Parser;
-use cli::Cli;
-
-fn main() -> Result<()> {
-    let cli = match Cli::try_parse() {
-        Ok(cli) => cli,
-        Err(e) => {
-            println!("{e}");
-            exit(-1);
-        }
-    };
-
-    match run::run(cli) {
-        Ok(()) => Ok(()),
-        Err(e) => {
-            println!("{e}");
-            exit(-1);
-        }
-    }
+#[clap_main]
+pub fn run(mut cli: Cli) -> Result<()> {
+    cli.execute()
 }
