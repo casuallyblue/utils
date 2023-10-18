@@ -1,5 +1,4 @@
 use std::{
-    env::current_dir,
     io::{stdout, Write},
     path::PathBuf,
 };
