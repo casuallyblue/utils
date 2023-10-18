@@ -7,7 +7,7 @@ use crate::result::Result;
 pub trait RepoActions {
     fn create(&mut self) -> Result<()>;
     fn update(&mut self) -> Result<()>;
-    fn add_change(&mut self, path: String) -> Result<()>;
+    fn add_change(&mut self, path: PathBuf) -> Result<()>;
     fn commit(&mut self, message: String) -> Result<()>;
     fn push(&mut self, remote: String) -> Result<()>;
 }

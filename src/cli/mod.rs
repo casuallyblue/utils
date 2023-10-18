@@ -1,6 +1,7 @@
-use std::error::Error;
+use std::{error::Error, io::stdout};
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
 
 use self::repo::RepoCommand;
 
@@ -24,12 +25,24 @@ pub enum Command {
         #[command(subcommand)]
         command: RepoCommand,
     },
+    GenerateCompletions {
+        shell: Shell,
+    },
 }
 
 impl Execute for Command {
     fn execute(&mut self) -> Result<(), Box<dyn Error>> {
         match self {
             Command::Repo { command } => command.execute(),
+            Command::GenerateCompletions { shell } => {
+                clap_complete::generate(
+                    *shell,
+                    &mut Cli::command_for_update(),
+                    "utils",
+                    &mut stdout(),
+                );
+                Ok(())
+            }
         }
     }
 }

@@ -157,13 +157,13 @@ impl<T: Repo> RepoActions for T {
         Ok(())
     }
 
-    fn add_change(&mut self, path: String) -> Result<()> {
+    fn add_change(&mut self, path: PathBuf) -> Result<()> {
         let repo = Repository::open(self.path())?;
 
         // Get the index for the currently checked
         // out branch and insert the file into it
         let mut index = repo.index()?;
-        index.add_path(Path::new(&path))?;
+        index.add_path(path.as_path())?;
 
         // Write the index back out to the filesystem
         index.write()?;

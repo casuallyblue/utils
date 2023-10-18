@@ -10,6 +10,7 @@ members = ["clap_main"]
 
 [dependencies]
 clap = { version = "4.4.6", features = ["derive"] }
+clap_complete = "4.4.3"
 clap_main = { version = "0.1.0", path = "clap_main" }
 git2 = { version = "0.18.1", features = [
   "vendored-libgit2",

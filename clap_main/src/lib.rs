@@ -3,7 +3,7 @@ use quote::quote;
 use syn::{parse_macro_input, ItemFn};
 
 #[proc_macro_attribute]
-pub fn clap_main(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn clap_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let f = parse_macro_input!(item as ItemFn);
 
     let item_type = f

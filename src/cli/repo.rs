@@ -16,7 +16,7 @@ pub enum RepoCommand {
         repo_type: Option<RepoType>,
     },
     AddChange {
-        path: String,
+        path: PathBuf,
     },
     Commit {
         message: String,
