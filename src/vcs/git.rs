@@ -203,7 +203,7 @@ impl<T: Repo> RepoActions for T {
     }
 
     fn push(&mut self, remote: String) -> Result<()> {
-        let repo = Repository::open(current_dir()?)?;
+        let repo = Repository::open(self.path())?;
         let mut remote = repo.find_remote(remote.as_str())?;
 
         let mut callbacks = RemoteCallbacks::new();
