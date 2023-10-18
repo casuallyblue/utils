@@ -172,7 +172,7 @@ impl<T: Repo> RepoActions for T {
     }
 
     fn commit(&mut self, message: String) -> Result<()> {
-        let repo = Repository::open(current_dir()?)?;
+        let repo = Repository::open(self.path())?;
 
         // Get a reference to the current tree
         let tree_oid = repo.index()?.write_tree()?;
