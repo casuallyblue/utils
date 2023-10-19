@@ -184,6 +184,8 @@ checksum = "cd7cc57abe963c6d3b9d8be5b06ba7c8957a930305ca90304f24ef040aa6f961"
 [[package]]
 name = "clap_main"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef4590110de29d077ad49794369a6de3bd1bb7ab775a6be7805cc972903be107"
 dependencies = [
  "proc-macro2",
  "quote",
