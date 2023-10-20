@@ -256,8 +256,6 @@ impl<T: Repo> RepoActions for T {
                     repo.head()?.peel_to_commit()?.id(),
                     upstream_ref.peel_to_commit()?.id(),
                 )? {
-                    let current = repo.head()?.peel_to_commit()?;
-
                     println!(
                         "Branch is {} commits ahead of {}",
                         ahead,
