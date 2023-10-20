@@ -225,4 +225,107 @@ impl<T: Repo> RepoActions for T {
 
         Ok(())
     }
+
+    fn status(&mut self) -> Result<()> {
+        let repo = Repository::open(self.path())?;
+
+        match repo.head()?.shorthand() {
+            Some(branch) => {
+                println!("On branch {branch}");
+            }
+            None => {
+                println!("Not currently on branch");
+            }
+        }
+
+        let statuses = repo.statuses(None)?;
+
+        print_status_unstaged(&repo, &statuses)?;
+        println!();
+        print_status_staged(&repo, &statuses)?;
+
+        Ok(())
+    }
+}
+
+fn print_status_unstaged(_repo: &Repository, statuses: &git2::Statuses<'_>) -> Result<()> {
+    if statuses
+        .iter()
+        .filter(|s| !s.status().is_ignored() && s.index_to_workdir().is_some())
+        .count()
+        > 0
+    {
+        println!("Changes not staged for commit: ");
+    }
+
+    for status in statuses
+        .iter()
+        .filter(|s| !s.status().is_ignored() && s.index_to_workdir().is_some())
+    {
+        let index_info = status
+            .head_to_index()
+            .ok_or("Could not get index information")?;
+        let old_path = index_info.old_file().path();
+        let new_path = index_info.new_file().path();
+
+        let status_message = match status.status() {
+            s if s.is_wt_new() => "new file: ",
+            s if s.is_wt_modified() => "modified: ",
+            s if s.is_wt_deleted() => "deleted:  ",
+            s if s.is_wt_renamed() => "renamed:  ",
+            s if s.is_wt_typechange() => "typechange:",
+            _ => continue,
+        };
+
+        let path = match (old_path, new_path) {
+            (Some(old), Some(new)) if new != old => {
+                format!("{} -> {}", old.display(), new.display())
+            }
+            (Some(old), _) => format!("{}", old.display()),
+            (_, Some(new)) => format!("{}", new.display()),
+            _ => continue,
+        };
+
+        println!("\t{} {}", status_message, path);
+    }
+    Ok(())
+}
+
+fn print_status_staged(_repo: &Repository, statuses: &git2::Statuses<'_>) -> Result<()> {
+    if statuses.iter().filter(|s| !s.status().is_ignored()).count() > 0 {
+        println!("Changes to be commited: ");
+    }
+
+    for status in statuses.iter() {
+        if status.status().is_ignored() {
+            continue;
+        }
+
+        let index_info = status
+            .head_to_index()
+            .ok_or("Could not get index information")?;
+        let old_path = index_info.old_file().path();
+        let new_path = index_info.new_file().path();
+
+        let status_message = match status.status() {
+            s if s.is_index_new() => "new file: ",
+            s if s.is_index_modified() => "modified: ",
+            s if s.is_index_deleted() => "deleted:  ",
+            s if s.is_index_renamed() => "renamed:  ",
+            s if s.is_index_typechange() => "typechange:",
+            _ => continue,
+        };
+
+        let path = match (old_path, new_path) {
+            (Some(old), Some(new)) if new != old => {
+                format!("{} -> {}", old.display(), new.display())
+            }
+            (Some(old), _) => format!("{}", old.display()),
+            (_, Some(new)) => format!("{}", new.display()),
+            _ => continue,
+        };
+
+        println!("\t{} {}", status_message, path);
+    }
+    Ok(())
 }
