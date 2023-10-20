@@ -238,10 +238,35 @@ impl<T: Repo> RepoActions for T {
             }
         }
 
+        match Branch::wrap(repo.head()?).upstream() {
+            Ok(upstream) => {
+                let upstream_ref = upstream.get();
+
+                if upstream_ref.peel_to_commit()?.id() == repo.head()?.peel_to_commit()?.id() {
+                    println!("Branch is up to date with {}", upstream_ref.name().unwrap())
+                } else if repo.graph_descendant_of(
+                    repo.head()?.peel_to_commit()?.id(),
+                    upstream_ref.peel_to_commit()?.id(),
+                )? {
+                    println!("Branch is ahead of {}", upstream_ref.name().unwrap())
+                } else if repo.graph_descendant_of(
+                    upstream_ref.peel_to_commit()?.id(),
+                    repo.head()?.peel_to_commit()?.id(),
+                )? {
+                    println!("{} is ahead of branch", upstream_ref.name().unwrap())
+                } else {
+                    panic!("Error, branch should be somewhere relative to its upstream");
+                }
+            }
+            Err(_) => println!(
+                "No upstream branch configured for {}",
+                Branch::wrap(repo.head()?).name()?.unwrap_or("(anonymous)")
+            ),
+        }
+
         let statuses = repo.statuses(None)?;
 
         print_status_unstaged(&repo, &statuses)?;
-        println!();
         print_status_staged(&repo, &statuses)?;
 
         Ok(())
@@ -255,6 +280,7 @@ fn print_status_unstaged(_repo: &Repository, statuses: &git2::Statuses<'_>) -> R
         .count()
         > 0
     {
+        println!();
         println!("Changes not staged for commit: ");
     }
 
@@ -263,7 +289,7 @@ fn print_status_unstaged(_repo: &Repository, statuses: &git2::Statuses<'_>) -> R
         .filter(|s| !s.status().is_ignored() && s.index_to_workdir().is_some())
     {
         let index_info = status
-            .head_to_index()
+            .index_to_workdir()
             .ok_or("Could not get index information")?;
         let old_path = index_info.old_file().path();
         let new_path = index_info.new_file().path();
@@ -292,11 +318,20 @@ fn print_status_unstaged(_repo: &Repository, statuses: &git2::Statuses<'_>) -> R
 }
 
 fn print_status_staged(_repo: &Repository, statuses: &git2::Statuses<'_>) -> Result<()> {
-    if statuses.iter().filter(|s| !s.status().is_ignored()).count() > 0 {
+    if statuses
+        .iter()
+        .filter(|s| !s.status().is_ignored() && s.head_to_index().is_some())
+        .count()
+        > 0
+    {
+        println!();
         println!("Changes to be commited: ");
     }
 
-    for status in statuses.iter() {
+    for status in statuses
+        .iter()
+        .filter(|s| !s.status().is_ignored() && s.head_to_index().is_some())
+    {
         if status.status().is_ignored() {
             continue;
         }
