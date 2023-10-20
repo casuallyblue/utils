@@ -1,6 +1,6 @@
 use std::{env::current_dir, error::Error, ffi::OsStr, path::PathBuf, str::FromStr};
 
-use clap::Subcommand;
+use clap::{builder::PossibleValue, Subcommand, ValueEnum};
 
 use crate::vcs::{git::GitRepo, Repo, RepoActions};
 
@@ -26,6 +26,8 @@ pub enum RepoCommand {
         #[arg(default_value = "origin")]
         remote: String,
     },
+
+    Status,
 }
 
 impl Execute for RepoCommand {
@@ -45,6 +47,7 @@ impl Execute for RepoCommand {
             RepoCommand::Commit { message } => guess_repo_type()?.commit(message.clone())?,
             RepoCommand::Update => guess_repo_type()?.update()?,
             RepoCommand::Push { remote } => guess_repo_type()?.push(remote.clone())?,
+            RepoCommand::Status => guess_repo_type()?.status()?,
         }
 
         Ok(())
@@ -78,30 +81,34 @@ pub enum RepoType {
     Bazaar,
 }
 
+impl ValueEnum for RepoType {
+    fn value_variants<'a>() -> &'a [Self] {
+        &[
+            RepoType::Git,
+            RepoType::Pijul,
+            RepoType::Subversion,
+            RepoType::Bazaar,
+        ]
+    }
+
+    fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
+        Some(PossibleValue::new(match self {
+            RepoType::Git => "git",
+            RepoType::Pijul => "pijul",
+            RepoType::Subversion => "svn",
+            RepoType::Bazaar => "bzr",
+        }))
+    }
+}
+
 impl From<&OsStr> for RepoType {
     fn from(value: &OsStr) -> Self {
         match value.to_str() {
-            Some(s) => match RepoType::from_str(s) {
+            Some(s) => match RepoType::from_str(s, true) {
                 Ok(val) => val,
                 _ => panic!("Invalid RepoType {}", s),
             },
             None => panic!("Invalid String value: {:?}", value),
         }
-    }
-}
-
-impl FromStr for RepoType {
-    type Err = Box<dyn std::error::Error>;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "git" => RepoType::Git,
-            "pijul" => RepoType::Pijul,
-            "svn" => RepoType::Subversion,
-            "bzr" => RepoType::Bazaar,
-            _ => {
-                panic!("Unknown value for repo type {}", s);
-            }
-        })
     }
 }
