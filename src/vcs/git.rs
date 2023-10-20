@@ -243,17 +243,20 @@ impl<T: Repo> RepoActions for T {
                 let upstream_ref = upstream.get();
 
                 if upstream_ref.peel_to_commit()?.id() == repo.head()?.peel_to_commit()?.id() {
-                    println!("Branch is up to date with {}", upstream_ref.name().unwrap())
+                    println!(
+                        "Branch is up to date with {}",
+                        upstream_ref.shorthand().unwrap()
+                    )
                 } else if repo.graph_descendant_of(
                     repo.head()?.peel_to_commit()?.id(),
                     upstream_ref.peel_to_commit()?.id(),
                 )? {
-                    println!("Branch is ahead of {}", upstream_ref.name().unwrap())
+                    println!("Branch is ahead of {}", upstream_ref.shorthand().unwrap())
                 } else if repo.graph_descendant_of(
                     upstream_ref.peel_to_commit()?.id(),
                     repo.head()?.peel_to_commit()?.id(),
                 )? {
-                    println!("{} is ahead of branch", upstream_ref.name().unwrap())
+                    println!("{} is ahead of branch", upstream_ref.shorthand().unwrap())
                 } else {
                     panic!("Error, branch should be somewhere relative to its upstream");
                 }
