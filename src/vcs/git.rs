@@ -74,12 +74,30 @@ impl<T: Repo> RepoActions for T {
 
         let mut remote = repo.find_remote("origin")?;
 
+        let current_branch = if repo.head()?.is_branch() {
+            Branch::wrap(repo.head()?)
+        } else {
+            return Err("Could not get current branch".into());
+        };
+
+        let upstream_name = current_branch
+            .upstream()?
+            .name()?
+            .ok_or("Could not get name of upstream branch")?
+            .to_owned();
+
         // fetch changes on the master branch
         // but don't do anything with them yet
-        remote.fetch(&["master"], Some(&mut options), Some("fetch"))?;
+        remote.fetch(
+            &[current_branch
+                .name()?
+                .ok_or("Could not get local branch name")?],
+            Some(&mut options),
+            Some("fetch"),
+        )?;
 
         // Get the head of the origin branch that is being updated
-        let ref_anotated = repo.resolve_reference_from_short_name("origin/master")?;
+        let ref_anotated = repo.resolve_reference_from_short_name(upstream_name.as_str())?;
         // Annotate the commit so we can reference it later
         let annotated = repo.reference_to_annotated_commit(&ref_anotated)?;
 
@@ -118,7 +136,8 @@ impl<T: Repo> RepoActions for T {
             // If we don't have any conflicts we can proceed
             if !repo.index()?.has_conflicts() {
                 // Find the remote branch's head
-                let merge_commit = repo.resolve_reference_from_short_name("origin/master")?;
+                let merge_commit =
+                    repo.resolve_reference_from_short_name(upstream_name.as_str())?;
 
                 // Find the name for the remote tracking branch so we can log it
                 let target = Branch::wrap(merge_commit);
