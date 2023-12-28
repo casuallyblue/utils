@@ -8,6 +8,6 @@ use result::Result;
 use cli::{Cli, Execute};
 
 #[clap_main]
-pub fn run(Cli { mut subcommand }: Cli) -> Result<()> {
+pub fn main(Cli { mut subcommand }: Cli) -> Result<()> {
     subcommand.execute()
 }
